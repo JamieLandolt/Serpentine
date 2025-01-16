@@ -29,6 +29,7 @@ function Opponent(text, func, func_params, text_offset_x, text_offset_y, width, 
             lg.scale(1/self.scale)
             love.graphics.setColor(248/255, 252/255, 3/255)
             love.graphics.print(self.text, self.font, x + self.text_offset_x, y + self.text_offset_y)
+            return avatar
         end,
 
         checkPressed = function(self, mouse_x, mouse_y)
