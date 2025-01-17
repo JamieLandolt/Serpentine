@@ -11,7 +11,7 @@ end
 function love.draw()
     --print_array(arr)
     lg.setColor(1, 1, 1)
-    print("hello", 10, 10)
+
 end
 
 function print_array(arr)
@@ -23,3 +23,4 @@ function print_array(arr)
         y_pos = y_pos + 20
     end
 end
+

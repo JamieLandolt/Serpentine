@@ -2,7 +2,6 @@ local love = require "love"
 
 function Button(text, func, func_params, x, y, width, height, font, text_offset_x, text_offset_y, debugger)
     return {
-        debugger = debugger,
         font = font,
         text = text or "No Text",
         func = func,
@@ -32,6 +31,7 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
                 else
                     self.func()
                 end
+                debugger(self.text)
                 return
             end
         end

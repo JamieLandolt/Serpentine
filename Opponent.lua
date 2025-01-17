@@ -1,10 +1,10 @@
 local love = require "love"
 local lg = love.graphics
 
-function Opponent(text, func, func_params, text_offset_x, text_offset_y, width, height, image_path, scale, debugger)
+function Opponent(text, func, func_params, text_offset_x, text_offset_y, font, width, height, image, scale, debugger)
     return {
         text = text,
-        image_path = image_path,
+        image = image,
         debugger = debugger,
         func = func,
         func_params = func_params,
@@ -14,6 +14,7 @@ function Opponent(text, func, func_params, text_offset_x, text_offset_y, width, 
         scale = scale,
         text_offset_x = text_offset_x,
         text_offset_y = text_offset_y,
+        font = font,
 
         draw = function(self, x, y)
             self.x = x
@@ -24,12 +25,10 @@ function Opponent(text, func, func_params, text_offset_x, text_offset_y, width, 
             love.graphics.rectangle("fill", x, y, self.width, self.height, self.border_radius, self.border_radius)
             love.graphics.setColor(1, 1, 1)
             lg.scale(self.scale)
-            local avatar = love.graphics.newImage(self.image_path)
-            love.graphics.draw(avatar, x, y + 100)
+            love.graphics.draw(image, x, y + 100)
             lg.scale(1/self.scale)
             love.graphics.setColor(248/255, 252/255, 3/255)
             love.graphics.print(self.text, self.font, x + self.text_offset_x, y + self.text_offset_y)
-            return avatar
         end,
 
         checkPressed = function(self, mouse_x, mouse_y)

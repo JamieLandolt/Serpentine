@@ -6,9 +6,13 @@ local scandir = require "scandir"
 
 math.randomseed(os.time())
 
+_G.buttons_drawn = {}
+
 local scroll_offset_y = 0
 local button_width = 200
 local button_height = 60
+local opponent_button_width = 355
+local opponent_button_height = 500
 local window_width = 1250
 local window_height = 800
 local debug = "Debug Text"
@@ -57,7 +61,9 @@ function love.load()
         cards[i] = lg.newImage("assets/cards/" .. card_files[i])
     end
 
-
+    avatars.first = love.graphics.newImage("assets/opponents/ice_king.jpg")
+    avatars.second = love.graphics.newImage("assets/opponents/princess_bubblegum.png")
+    avatars.third = love.graphics.newImage("assets/opponents/marcelline.jpg")
 
     love.window.setMode(window_width, window_height)
     new_background()
@@ -70,12 +76,14 @@ function love.load()
     buttons.collection["Collection Header"] = button("Collection", nil, nil, lg.getWidth() / 2 - button_width / 2, 5, button_width, button_height, font, 14, 4, debugger)
     buttons.collection["Collection To Menu"] = button("Back", update_game_state, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
 
-    buttons.level_select["Ice King"] = opponent("Ice King", update_game_state, "Ice King", 19, 4, button_width * 5/8, button_height, "assets/opponents/ice_king.jpg", 1, debugger)
-    buttons.level_select["Princess Bubblegum"] = opponent("Princess Bubblegum", update_game_state, "Princess Bubblegum", 19, 4, button_width * 2, button_height * 5, "assets/opponents/princess_bubblegum.png", 1, debugger)
-    buttons.level_select["Marcelline"] = opponent("Marcelline", update_game_state, "Marcelline", 19, 4, button_width * 2, button_height * 5, "assets/opponents/marcelline2.jpg", 1, debugger)
     buttons.level_select["Level Select To Menu"] = button("Back", update_game_state, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.level_select["Select Opponent"] = button("Select Opponent", nil, nil, 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.level_select["Ice King"] = opponent("Ice King", update_game_state, "Ice King", 109, 20, font, opponent_button_width, opponent_button_height, avatars["first"], 1, debugger)
+    buttons.level_select["Princess Bubblegum"] = opponent("  Princess\nBubblegum", update_game_state, "Princess Bubblegum", 80, 0, font, opponent_button_width, opponent_button_height, avatars["second"], 1, debugger)
+    buttons.level_select["Marcelline"] = opponent("Marcelline", update_game_state, "Marcelline", 84, 20, font, opponent_button_width, opponent_button_height, avatars["third"], 1, debugger)
 
     buttons.settings["Toggle Audio"] = button("Toggle Audio", toggle_audio, "Princess Bubblegum", 5, 5, button_width * 2, button_height * 5, font, 19, 4, debugger)
+    buttons.settings["Settings To Menu"] = button("Back", update_game_state, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
 end
 
 function toggle_audio()
@@ -178,22 +186,16 @@ end
 
 local function render_settings()
     renderBackground()
+    buttons.settings["Settings To Menu"]:draw(0, 0)
 end
 
 local function render_level_select()
     local x, y = 45, 100
-    if avatars[1] then
-        avatars[1]:release()
-        avatars[2]:release()
-        avatars[3]:release()
-    end
-
     renderBackground()
-    buttons.level_select["Level Select To Menu"]:draw(5, 5)
-    avatars[1] = buttons.level_select["Princess Bubblegum"]:draw(x, y)
-    avatars[2] = buttons.level_select["Ice King"]:draw(x + 400, y)
-    avatars[3] = buttons.level_select["Marcelline"]:draw(x + 800, y)
-    x = x + 400
+    buttons.level_select["Princess Bubblegum"]:draw(x, y)
+    buttons.level_select["Ice King"]:draw(x + 400, y)
+    buttons.level_select["Marcelline"]:draw(x + 800, y)
+    buttons.level_select["Level Select To Menu"]:draw(0, 800)
 end
 
 function love.draw()
