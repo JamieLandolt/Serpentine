@@ -27,9 +27,12 @@ local opponent_files = {"ice_king.png", "marcelline.jpg", "princess_bubblegum.jp
 local font = love.graphics.newFont("assets/Jersey15-Regular.ttf", 50)
 local debug_font = love.graphics.newFont("assets/Jersey15-Regular.ttf", 20)
 local test = false
-local avatars = {}
 
+local avatars = {}
 local cards = {}
+local icons = {}
+local audio_files = {}
+
 local buttons = {
     menu = {},
     settings = {},
@@ -52,8 +55,6 @@ local game = {
     }
 }
 
-local audio = {}
-
 function love.load()
     s1 = ""
     cards = {}
@@ -61,9 +62,12 @@ function love.load()
         cards[i] = lg.newImage("assets/cards/" .. card_files[i])
     end
 
-    avatars.first = love.graphics.newImage("assets/opponents/ice_king.jpg")
-    avatars.second = love.graphics.newImage("assets/opponents/princess_bubblegum.png")
-    avatars.third = love.graphics.newImage("assets/opponents/marcelline.jpg")
+    avatars.ice_king = love.graphics.newImage("assets/opponents/ice_king.jpg")
+    avatars.princess_bubblegum = love.graphics.newImage("assets/opponents/princess_bubblegum.png")
+    avatars.marcelline = love.graphics.newImage("assets/opponents/marcelline.jpg")
+
+    icons.audio_enabled = love.graphics.newImage("assets/icons/audio_enabled.png")
+    icons.audio_disabled = love.graphics.newImage("assets/icons/audio_disabled.png")
 
     love.window.setMode(window_width, window_height)
     new_background()
@@ -78,11 +82,13 @@ function love.load()
 
     buttons.level_select["Level Select To Menu"] = button("Back", update_game_state, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
     buttons.level_select["Select Opponent"] = button("Select Opponent", nil, nil, 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
-    buttons.level_select["Ice King"] = opponent("Ice King", update_game_state, "Ice King", 109, 20, font, opponent_button_width, opponent_button_height, avatars["first"], 1, debugger)
-    buttons.level_select["Princess Bubblegum"] = opponent("  Princess\nBubblegum", update_game_state, "Princess Bubblegum", 80, 0, font, opponent_button_width, opponent_button_height, avatars["second"], 1, debugger)
-    buttons.level_select["Marcelline"] = opponent("Marcelline", update_game_state, "Marcelline", 84, 20, font, opponent_button_width, opponent_button_height, avatars["third"], 1, debugger)
+    buttons.level_select["Ice King"] = opponent("Ice King", update_game_state, "Ice King", 109, 20, font, opponent_button_width, opponent_button_height, avatars.ice_king, 1, debugger)
+    buttons.level_select["Princess Bubblegum"] = opponent("  Princess\nBubblegum", update_game_state, "Princess Bubblegum", 80, 0, font, opponent_button_width, opponent_button_height, avatars.princess_bubblegum, 1, debugger)
+    buttons.level_select["Marcelline"] = opponent("Marcelline", update_game_state, "Marcelline", 84, 20, font, opponent_button_width, opponent_button_height, avatars.marcelline, 1, debugger)
 
-    buttons.settings["Toggle Audio"] = button("Toggle Audio", toggle_audio, "Princess Bubblegum", 5, 5, button_width * 2, button_height * 5, font, 19, 4, debugger)
+    buttons.settings["Toggle Audio"] = button("Toggle Audio", toggle_audio, nil, lg.getWidth() / 2 - button_width * 1/4, lg.getHeight() / 2 - 100, button_width * 1.315, button_height, font, 19, 4, debugger)
+    buttons.settings["Audio Enabled"] = button("", nil, nil, lg.getWidth() / 2 - button_width * 3/4, lg.getHeight() / 2 - 100, button_width * 0.3, button_height, font, 19, 4, debugger, icons.audio_enabled)
+    buttons.settings["Audio Disabled"] = button("", nil, nil, lg.getWidth() / 2 - button_width * 3/4, lg.getHeight() / 2 - 100, button_width * 0.3, button_height, font, 19, 4, debugger, icons.audio_disabled)
     buttons.settings["Settings To Menu"] = button("Back", update_game_state, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
 end
 
@@ -118,7 +124,7 @@ end
 
 function love.wheelmoved(x, y)
     if scroll_offset_y + y < 0 then
-        scroll_offset_y = scroll_offset_y + y
+        scroll_offset_y = scroll_offset_y + y * 2
     else
         scroll_offset_y = 0
     end
@@ -156,7 +162,7 @@ end
 
 local function render_main_menu()
     renderBackground()
-    avatars[1] = buttons.menu["Play Game"]:draw()
+    buttons.menu["Play Game"]:draw()
     buttons.menu["Collection"]:draw()
     buttons.menu["Settings"]:draw()
     buttons.menu["New Background"]:draw()
@@ -186,7 +192,13 @@ end
 
 local function render_settings()
     renderBackground()
-    buttons.settings["Settings To Menu"]:draw(0, 0)
+    buttons.settings["Settings To Menu"]:draw()
+    buttons.settings["Toggle Audio"]:draw()
+    if audio then
+        buttons.settings["Audio Enabled"]:draw()
+    else
+        buttons.settings["Audio Disabled"]:draw()
+    end
 end
 
 local function render_level_select()
