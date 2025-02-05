@@ -14,6 +14,7 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
         width = width,
         height = height,
         border_radius = 5,
+        debugger = debugger,
 
         draw = function(self)
             love.graphics.setColor(163/255, 15/255, 32/255)
@@ -32,14 +33,13 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
         end,
 
         checkPressed = function(self, mouse_x, mouse_y)
-            --self.debugger("X: " .. mouse_x .. " Y: " .. mouse_y)
             if mouse_x > self.x and mouse_x < self.x + self.width and mouse_y > self.y and mouse_y < self.y + self.height and self.func then
+                self.debugger(self.text .. " was pressed.")
                 if self.func_params then
                     self.func(self.func_params)
                 else
                     self.func()
                 end
-                debugger(self.text)
                 return
             end
         end
