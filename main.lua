@@ -26,6 +26,10 @@ local font = love.graphics.newFont("assets/Jersey15-Regular.ttf", 50)
 local debug_font = love.graphics.newFont("assets/Jersey15-Regular.ttf", 20)
 local test = false
 local opponent_scale = 0.5
+--local card_background_height = lg.getHeight()/2
+--local card_background_width = 2*lg.getWidth()/3
+local card_background_height = lg.getHeight()/2
+local card_background_width = lg.getWidth()*5/8 - 25
 
 -- NOT LOCAL
 chosen_avatar = "Gabe"
@@ -132,7 +136,7 @@ function love.load()
     buttons.playing["Back"] = button("Back", update_game_state, "level_select", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
     buttons.playing["Princess Bubblegum"] = avatar("  Princess\nBubblegum", "Princess Bubblegum", nil, nil, 80, 0, font, opponent_button_width, opponent_button_height, avatars.princess_bubblegum, opponent_scale, debugger)
     buttons.playing["Marcelline"] = avatar("Marcelline", "Marcelline", nil, nil, 84, 20, font, opponent_button_width, opponent_button_height, avatars.marcelline, opponent_scale, debugger)
-
+    buttons.playing["Card Background"] = button("Hand", nil, nil, 5, lg.getHeight() - card_background_height - 5, card_background_width, card_background_height, font, 19, 4, debugger)
 end
 
 function toggle_audio()
@@ -148,7 +152,6 @@ end
 function debugger(debug_text)
     debug = debug_text
 end
-
 
 function print_kvarray(arr)
     x_pos = 10
@@ -279,7 +282,6 @@ local function player_turn()
     end
 end
 
-local card_spacing = {0.1, 0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03}
 
 local function get_card_spacing(num)
     return 0.1*(3/140 * num^2 - 59/140 * num + 71/14)
@@ -291,7 +293,7 @@ local function render_playing_state()
 
     renderBackground()
     count = count + 1
-    if count > 12000/20 then
+    if count > 400 then
         count = 0
     end
     local pic_offset = -50
@@ -301,25 +303,31 @@ local function render_playing_state()
     buttons.playing[chosen_opponent]:draw(lg.getWidth() - opponent_pic_width/2 - 5, 5, pic_offset, text_offset)
     buttons.playing["Back"]:draw(0, 0)
 
-    rotation = card_spacing[#player_hand + 1]
-    rotation_difference = card_spacing[#player_hand + 1] -- Amount to rotate next drawn card
+    rotation = -#player_hand/2 * 0.1
+    rotation_difference = 0.1 -- Amount to rotate next drawn card
+
+
+    buttons.playing["Card Background"]:draw()
 
     love.graphics.push()
     love.graphics.translate(250, lg.getHeight()* 5/4)
 
-    local x_pos = - img_widths * 0.6
-    local y_pos = - lg.getHeight() / 2 + 200 - img_heights
+    local x_pos = - img_widths * 0.4
+    local y_pos = - lg.getHeight() / 2 + 100 - img_heights
+
+    local y_adjustment = 0
 
     debug2 = ""
     lg.scale(6/5)
+
     --Draw Hand
     for i, card in ipairs(player_hand) do
-        --debug2 = debug2 .. tostring(x_pos + next_card_x_offset * (i-1)) .. tostring(y_pos + next_card_y_offset * (i-1)) .. tostring(rotation + rotation_difference * (i-1)) .. "\n"
-        card:draw(x_pos - img_widths/2, y_pos - img_heights/2, rotation + rotation_difference * (i-1))
+        card:draw(x_pos, y_pos + y_adjustment, rotation + rotation_difference * (i-1), 1, 1, img_widths/2, img_heights/2)
     end
-    --love.graphics.draw(player_hand[1], X, Y, math.deg(90), 1, 1, image:getWidth()/2, image:getHeight()/2)
+
     lg.scale(5/6)
     love.graphics.pop()
+
 end
 
 function love.update(dt)
