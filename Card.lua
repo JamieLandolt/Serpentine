@@ -3,9 +3,10 @@ local lg = love.graphics
 
 function Card(card_path, card_width, card_height)
     return {
-        card_object = lg.newImage(card_path),
+        card_object = lg.newImage("assets/cards/" .. card_path),
         card_height = card_height,
         card_width = card_width,
+        card_path = card_path,
         draw = function(self, x, y, rot)
             lg.scale(7/10)
             lg.rotate(rot)

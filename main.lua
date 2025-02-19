@@ -142,14 +142,17 @@ chosen_opponent = "Ice King"
 scroll_offset_y = 0
 count = 0
 mouse_over_hand = false
-characters  = {"Alem", "Gabe", "Jamie", "Darcy", "Josh", "Michael"}
+characters = {"Alem", "Gabe", "Jamie", "Darcy", "Josh", "Michael"}
+
+
 
 local opponents = {"Ice King", "Princess Bubblegum", "Marcelline"}
 local avatars = {}
 local cards = {}
 local icons = {}
-local audio_files = {}
+
 local player_hand = {}
+local held_card
 
 local buttons = {
     menu = {},
@@ -331,12 +334,17 @@ end
 function print_array(arr)
     x_pos = 10
     y_pos = 200
-    lg.setColor(0, 0, 0)
+    lg.setColor(1, 0, 0)
     for i, v in ipairs(arr) do
         lg.print(tostring(v), x_pos, y_pos)
-        y_pos = y_pos + 20
+        x_pos = x_pos + 100
+        if x_pos > 1000 then
+            x_pos = 20
+            y_pos = y_pos + 20
+        end
     end
 end
+
 
 function update_game_state(state)
     for state_name, state_value in pairs(game.state) do
@@ -437,10 +445,10 @@ local function player_turn()
 
 
     -- Choose initially/Add cards to hand when low
-    while #player_hand < math.floor(count / 50) do
+    while #player_hand < 8 and count < 50 do
         local index = math.random(1, #card_files)
         if not contains(chosen_indices, index) then
-            table.insert(player_hand, card("assets/cards/" .. card_files[index], img_widths, img_heights))
+            table.insert(player_hand, card(card_files[index], img_widths, img_heights))
             table.insert(chosen_indices, index)
         end
     end
@@ -492,22 +500,11 @@ local function render_biome_select()
 end
 
 local function render_playing_state()
-    local rotation
-    local rotation_difference
-    local x_pos
-    local y_pos
-    local x_offset
-
     renderBackground()
 
     render_biomes(210, 0)
 
     count = count + 1
-    if count > 400 then
-        count = 0
-    end
-    local pic_offset = -50
-    local text_offset = {-200, -20, -10}
 
     -- Draw Opponent
     buttons.playing[chosen_opponent]:draw()
@@ -522,40 +519,46 @@ local function render_playing_state()
     buttons.playing["Back"]:draw()
     buttons.playing["Card Background"]:draw()
 
+
+    local rotation = -#player_hand/2 * 0.1
+    local rotation_difference = 0.1 -- Amount to rotate next drawn card
+    local x_pos = -img_widths * 0.3 - 1
+    local x_offset = 0
+    local y_pos = - lg.getHeight() / 2 - img_heights
+
+    local vertical_rotation = 0
+    local vertical_rotation_difference = 0
+    local vertical_x_pos = -img_widths * 0.3 - 30
+    local vertical_x_offset = 45
+    local vertical_y_pos = - lg.getHeight() / 2 - img_heights + 25
+
+    local translation_x = 207
+    local translation_y = lg.getHeight() * 5/4 + lg.getHeight() * 1/16 - 10
+
     love.graphics.push()
-    love.graphics.translate(207, lg.getHeight() * 5/4 + lg.getHeight() * 1/16 - 10)
+    love.graphics.translate(translation_x, translation_y)
 
-    if not mouse_over_hand then
-        rotation = -#player_hand/2 * 0.1
-        rotation_difference = 0.1 -- Amount to rotate next drawn card
-        x_pos = -img_widths * 0.3 - 1
-        x_offset = 0
-        y_pos = - lg.getHeight() / 2 - img_heights
-    else
-        rotation = 0
-        rotation_difference = 0
-        x_pos = -img_widths * 0.3 - 30
-        x_offset = 45
-        y_pos = - lg.getHeight() / 2 - img_heights + 25
-    end
-
-    --Draw Hand
     for i, card in ipairs(player_hand) do
-        card:draw(x_pos - x_offset * (#player_hand - 1)/2, y_pos, rotation + rotation_difference * (i-1), 1, 1, img_widths/2, img_heights/2)
-        if i ~= #player_hand then
-            card_hitboxes[tostring(card)] = {x_pos - x_offset * (#player_hand - 1)/2, y_pos, x_pos - x_offset * (#player_hand - 1)/2 + x_offset, img_heights/2}
-        else
-            card_hitboxes[tostring(card)] = {x_pos - x_offset * (#player_hand - 1)/2, y_pos, img_widths/2, img_heights/2}
-        end
         if mouse_over_hand then
-            x_pos = x_pos + x_offset
+            card:draw(vertical_x_pos - vertical_x_offset * (#player_hand - 1)/2, vertical_y_pos, vertical_rotation + vertical_rotation_difference * (i-1))
+        else
+            card:draw(x_pos - x_offset * (#player_hand - 1)/2, y_pos, rotation + rotation_difference * (i-1))
         end
+
+        --Track Card Hitboxes
+        if i ~= #player_hand then
+            card_hitboxes[card] = {(vertical_x_pos - vertical_x_offset * (#player_hand - 1)/2) * 7/10 + translation_x, (vertical_y_pos) * 7/10 + translation_y, vertical_x_offset * 7/10, (img_heights/2) * 7/10}
+        else
+            card_hitboxes[card] = {(vertical_x_pos - vertical_x_offset * (#player_hand - 1)/2) * 7/10 + translation_x, (vertical_y_pos) * 7/10 + translation_y, (img_widths/2) * 7/10, (img_heights/2) * 7/10}
+        end
+        vertical_x_pos = vertical_x_pos + vertical_x_offset
+    end
+    love.graphics.pop()
+
+    if held_card then
+        held_card:draw((mouse.x - img_widths/4) * 10/7, (mouse.y - img_heights/4) * 10/7, 0)
     end
 
-    print_kvarray(card_hitboxes)
-    print_kvarray(lane_to_x)
-
-    love.graphics.pop()
 end
 
 function love.update(dt)
@@ -589,9 +592,18 @@ function love.mousepressed(x, y, button, istouch, presses)
 
         -- Check if card is clicked
         if game.state["playing"] then
+            local card_number = 0
             for card, hitbox in pairs(card_hitboxes) do
+                card_number = card_number + 1
                 if x > hitbox[1] and x < hitbox[1] + hitbox[3] and y > hitbox[2] and y < hitbox[2] + hitbox[4] then
-                    debugger("Card Clicked")
+                    --Find index of card
+                    for i, c in pairs(player_hand) do
+                        if c == card then
+                            table.remove(player_hand, i)
+                        end
+                    end
+                    card_hitboxes[card] = nil
+                    held_card = card
                 end
             end
         end
@@ -623,13 +635,12 @@ function love.draw()
         render_biome_select()
     end
 
-    print_array(buttons.menu)
-
     if debugger_enabled then
         lg.setColor(1, 0, 0)
         lg.printf(debug, debug_font, 10, 70, window_width)
-        lg.print(debug2, 20, 120)
+        lg.print(debug2, 20, 260)
         --lg.print(debug3, 20, 140)
+        print_array(player_hand)
         lg.setColor(1, 1, 1)
     end
 end

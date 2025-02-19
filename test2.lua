@@ -1,5 +1,12 @@
-if (nil or true) then
-    print("Nil 1")
-end
+local t = {
+    name = "Alice",
+    age = 30,
+    job = "Engineer"
+}
 
-print(tostring(nil or true))
+-- Remove the 'age' key-value pair
+t["age"] = nil
+
+for k, v in pairs(t) do
+    print(k, v)
+end
