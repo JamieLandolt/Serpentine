@@ -40,7 +40,11 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
                 if contains(self.edge_buttons, self.text) then
                     love.graphics.rectangle("fill", self.x - 5, self.y - 5, self.width + 10, self.height + 10, self.border_radius, self.border_radius)
                 else
-                    love.graphics.rectangle("fill", self.x - 13, self.y - 13, self.width + 26, self.height + 26, self.border_radius, self.border_radius)
+                    if animation_length < animation_time * 1 and animation_time < animation_length * 2 then
+                        love.graphics.rectangle("fill", self.x - 5, self.y - 5, self.width + 10, self.height + 10, self.border_radius, self.border_radius)
+                    else
+                        love.graphics.rectangle("fill", self.x - 13, self.y - 13, self.width + 26, self.height + 26, self.border_radius, self.border_radius)
+                    end
                 end
             else
                 love.graphics.setColor(163/255, 15/255, 32/255)
@@ -53,7 +57,11 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
                 if contains(self.edge_buttons, self.text) then
                     love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, self.border_radius, self.border_radius)
                 else
-                    love.graphics.rectangle("fill", self.x - 5, self.y - 5, self.width + 10, self.height + 10, self.border_radius, self.border_radius)
+                    if animation_length < animation_time * 1 and animation_time < animation_length * 2 then
+                        love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, self.border_radius, self.border_radius)
+                    else
+                        love.graphics.rectangle("fill", self.x - 5, self.y - 5, self.width + 10, self.height + 10, self.border_radius, self.border_radius)
+                    end
                 end
             else
                 love.graphics.setColor(244/255, 162/255, 97/255)
@@ -81,6 +89,7 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
                 else
                     self.func()
                 end
+                animation = true
                 return
             end
         end

@@ -7,6 +7,7 @@ local scandir = require "scandir"
 local card = require "Card"
 local biome = require "Biome"
 
+local player_biome_y = 405
 local biome_width, biome_height = 200, 300
 
 local debug = "Debug Text"
@@ -26,7 +27,9 @@ local chosen_background = ""
 
 local card_background_height = lg.getHeight() * 3/8 + 10
 local card_background_width = lg.getWidth()*5/8 - 96
+
 local card_hitboxes = {} --x, y, width, height
+player_biome_hitboxes = {{430, player_biome_y, biome_width, biome_height}, {635, player_biome_y, biome_width, biome_height}, {840, player_biome_y, biome_width, biome_height}, {1045, player_biome_y, biome_width, biome_height}} --x, y, width, height
 
 local button_width = 200
 local button_height = 60
@@ -126,10 +129,8 @@ local fields = {
 
 local magic_points = 1
 local health_points = 100
-
 local opponent_magic_points = 1
 local opponent_health_points = 100
-
 
 fields["Princess Bubblegum"] = {biome("N", lane_to_x["L1"], opp_L_y, biome_width, biome_height), biome("N", lane_to_x["L2"], opp_L_y, biome_width, biome_height), biome("N", lane_to_x["L3"], opp_L_y, biome_width, biome_height), biome("N", lane_to_x["L4"], opp_L_y, biome_width, biome_height)}
 fields["Marcelline"] = {biome("S", lane_to_x["L1"], opp_L_y, biome_width, biome_height), biome("C", lane_to_x["L2"], opp_L_y, biome_width, biome_height), biome("S", lane_to_x["L3"], opp_L_y, biome_width, biome_height), biome("C", lane_to_x["L4"], opp_L_y, biome_width, biome_height)}
@@ -143,8 +144,12 @@ scroll_offset_y = 0
 count = 0
 mouse_over_hand = false
 characters = {"Alem", "Gabe", "Jamie", "Darcy", "Josh", "Michael"}
+played_cards = {}
 
-
+animation_time = 0 -- how long it has been playing
+animation_length = 0.1 -- how long it lasts
+animation = false
+animation_next_screen = nil
 
 local opponents = {"Ice King", "Princess Bubblegum", "Marcelline"}
 local avatars = {}
@@ -219,10 +224,10 @@ function love.load()
     new_background()
 
     -- If adding new button, remember to draw it, may need to add game state too
-    buttons.menu["Play Game"] = button("Play Game", update_game_state, "level_select", lg.getWidth() / 2 - button_width / 2, lg.getHeight() / 2 - 150, button_width, button_height, font, 9, 4, debugger)
-    buttons.menu["Collection"] = button("Collection", update_game_state, "collection", lg.getWidth() / 2 - button_width / 2, lg.getHeight() / 2 - 50, button_width, button_height, font, 11, 4, debugger)
-    buttons.menu["Character"] = button("Character", update_game_state, "character_select", lg.getWidth() / 2 - button_width / 2, lg.getHeight() / 2 + 50, button_width, button_height, font, 6, 4, debugger)
-    buttons.menu["Settings"] = button("Settings", update_game_state, "settings", lg.getWidth() / 2 - button_width / 2, lg.getHeight() / 2 + 150, button_width, button_height, font, 19, 4, debugger)
+    buttons.menu["Play Game"] = button("Play Game", update_animation_screen, "level_select", lg.getWidth() / 2 - button_width / 2, lg.getHeight() / 2 - 150, button_width, button_height, font, 9, 4, debugger)
+    buttons.menu["Collection"] = button("Collection", update_animation_screen, "collection", lg.getWidth() / 2 - button_width / 2, lg.getHeight() / 2 - 50, button_width, button_height, font, 11, 4, debugger)
+    buttons.menu["Character"] = button("Character", update_animation_screen, "character_select", lg.getWidth() / 2 - button_width / 2, lg.getHeight() / 2 + 50, button_width, button_height, font, 6, 4, debugger)
+    buttons.menu["Settings"] = button("Settings", update_animation_screen, "settings", lg.getWidth() / 2 - button_width / 2, lg.getHeight() / 2 + 150, button_width, button_height, font, 19, 4, debugger)
     --buttons.menu["nums"] = button("1234567890 :", update_game_state, "settings", lg.getWidth() / 2 - button_width / 2, lg.getHeight() / 2 + 250, button_width, button_height, font, 19, 4, debugger)
 
     buttons.menu["Avatar Jamie"] = button("Avatar: Jamie", nil, nil, 5, 5, button_width + 85, button_height, font, 16, 4, debugger)
@@ -235,14 +240,14 @@ function love.load()
     buttons.menu["Switch Background"] = button("Switch Background", new_background, nil, lg.getWidth() - get_button_size("Switch Background") - 5, 5, get_button_size("Switch Background"), button_height, font, 5, 4, debugger)
 
     buttons.collection["Collection Header"] = button("Collection", nil, nil, lg.getWidth() / 2 - button_width / 2, 5, button_width, button_height, font, 14, 4, debugger)
-    buttons.collection["Back"] = button("Back", update_game_state, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.collection["Back"] = button("Back", update_animation_screen, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
 
     buttons.settings["Toggle Audio"] = button("Toggle Audio", toggle_audio, nil, lg.getWidth() / 2 - button_width * 1/4, lg.getHeight() / 2 - 100, button_width * 1.315, button_height, font, 19, 4, debugger)
     buttons.settings["Audio Enabled"] = button("", nil, nil, lg.getWidth() / 2 - button_width * 3/4, lg.getHeight() / 2 - 100, button_width * 0.3, button_height, font, 19, 4, debugger, icons.audio_enabled, 1/4, -6, 16)
     buttons.settings["Audio Disabled"] = button("", nil, nil, lg.getWidth() / 2 - button_width * 3/4, lg.getHeight() / 2 - 100, button_width * 0.3, button_height, font, 19, 4, debugger, icons.audio_disabled, 1/4, -6, 16)
-    buttons.settings["Back"] = button("Back", update_game_state, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.settings["Back"] = button("Back", update_animation_screen, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
 
-    buttons.level_select["Back"] = button("Back", update_game_state, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.level_select["Back"] = button("Back", update_animation_screen, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
     buttons.level_select["Select Opponent"] = button("Select Opponent", nil, nil, 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
     buttons.level_select["Ice King"] = avatar("Ice King", "Ice King", update_game_state, "biome_select", 109, 20, font, opponent_button_width, opponent_button_height, avatars.ice_king, 1, debugger)
     buttons.level_select["Princess Bubblegum"] = avatar("  Princess\nBubblegum", "Princess Bubblegum", update_game_state, "biome_select", 80, 0, font, opponent_button_width, opponent_button_height, avatars.princess_bubblegum, 1, debugger)
@@ -260,15 +265,15 @@ function love.load()
     buttons.biome_select["L4 Previous Biome"] = button("", prev_biome, 4, L4_x + 5, L_y - 5 + biome_height - button_height, button_width * 2/8, button_height, font, 5, 5, debugger, lg.newImage("assets/icons/left_arrow.png"), 1/8, -56, -8)
     buttons.biome_select["L4 Next Biome"] = button("", next_biome, 4, L4_x + 145, L_y - 5 + biome_height - button_height, button_width * 2/8, button_height, font, 5, 5, debugger, lg.newImage("assets/icons/right_arrow.png"), 1/8, -56, -8)
 
-    buttons.biome_select["Back"] = button("Back", update_game_state, "level_select", 5, 5, button_width * 3.9/8, button_height, font, 5, 5, debugger)
-    buttons.biome_select["Play"] = button("Play", update_game_state, "playing", lg.getWidth() - button_width * 3.5/8 - 5, lg.getHeight() - button_height - 5, button_width * 3.5/8, button_height, font, 5, 5, debugger)
+    buttons.biome_select["Back"] = button("Back", update_animation_screen, "level_select", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.biome_select["Play"] = button("Play", update_animation_screen, "playing", lg.getWidth() - button_width * 3.5/8 - 5, lg.getHeight() - button_height - 5, button_width * 3.5/8, button_height, font, 5, 5, debugger)
 
     buttons.biome_select["Princess Bubblegum"] = button("Princess's Bubblegum Biomes", nil, nil, 5 + (lg.getWidth() - get_button_size("Princess's Bubblegum Biomes")) / 2, 100 - button_height - 10, get_button_size("Princess's Bubblegum Biomes"), button_height, font, 13, 5, debugger)
     buttons.biome_select["Ice King"] = button("Ice King's Biomes", nil, nil, 5 + (lg.getWidth() - get_button_size("Ice King's Biomes")) / 2, 100 - button_height - 10, get_button_size("Ice King's Biomes"), button_height, font, 13, 5, debugger)
     buttons.biome_select["Marcelline"] = button("Marcelline's Biomes", nil, nil, 5 + (lg.getWidth() - get_button_size("Marcelline's Biomes")) / 2, 100 - button_height - 10, get_button_size("Marcelline's Biomes"), button_height, font, 13, 5, debugger)
     buttons.biome_select["Your Biomes"] = button("Your Biomes", nil, nil, 5 + (lg.getWidth() - get_button_size("Your Biomes")) / 2, 715, get_button_size("Your Biomes"), button_height, font, 8, 5, debugger)
 
-    buttons.character_select["Back"] = button("Back", update_game_state, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.character_select["Back"] = button("Back", update_animation_screen, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
     buttons.character_select["Gabe"] = avatar("Gabe", "Gabe", update_game_state, "menu", 95, 20, font, opponent_button_width, opponent_button_height, avatars.gabe, 0.7, debugger)
     buttons.character_select["Jamie"] = avatar("Jamie", "Jamie", update_game_state, "menu", 85, 20, font, opponent_button_width, opponent_button_height, avatars.jamie, 0.7, debugger)
     buttons.character_select["Michael"] = avatar("Michael", "Michael", update_game_state, "menu", 75, 20, font, opponent_button_width, opponent_button_height, avatars.michael, 0.7, debugger)
@@ -276,7 +281,7 @@ function love.load()
     buttons.character_select["Alem"] = avatar("Alem", "Alem", update_game_state, "menu", 95, 20, font, opponent_button_width, opponent_button_height, avatars.alem, 0.7, debugger)
     buttons.character_select["Darcy"] = avatar("Darcy", "Darcy", update_game_state, "menu", 85, 20, font, opponent_button_width, opponent_button_height, avatars.darcy, 0.7, debugger)
 
-    buttons.playing["Back"] = button("Back", update_game_state, "level_select", lg.getWidth() - button_width * 5/8 - 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.playing["Back"] = button("Back", update_animation_screen, "level_select", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
     buttons.playing["Card Background"] = button("Hand", placeholder, nil, 5, lg.getHeight() - card_background_height - 5, card_background_width, card_background_height, font, 19, 4, debugger)
 
     buttons.playing["Princess Bubblegum"] = button("Princess Bubblegum", nil, nil, 5 + lg.getWidth() - (827 + get_button_size("Princess Bubblegum")) / 2, 100 - button_height - 10, get_button_size("Princess Bubblegum"), button_height, font, 13, 5, debugger)
@@ -286,11 +291,13 @@ function love.load()
     buttons.playing["You"] = button("You", nil, nil, 5 + lg.getWidth() - (827 + get_button_size("You")) / 2, 715, get_button_size("You"), button_height, font, 3, 5, debugger)
     buttons.playing["You Stats"] = button("You", nil, nil, 375 - get_button_size("Ice King"), 400 + button_height + 10, get_button_size("You"), button_height, font, 3, 5, debugger)
 
-    buttons.playing["MP"] = button("MP: " .. magic_points, nil, nil, 425 - 10 - get_button_size("MP: 10") - 10, 400 - button_height - 10, get_button_size("MP: 10"), button_height, font, 13, 4, debugger)
-    buttons.playing["HP"] = button("HP: " .. health_points, nil, nil, 425 - 50 - get_button_size("HP: 100") - get_button_size("MP: 10") - 10, 400 - button_height - 10, get_button_size("HP: 100") + 5, button_height, font, 13, 4, debugger)
+    buttons.playing["MP"] = button("MP: " .. opponent_magic_points, nil, nil, 425 - 10 - get_button_size("MP: 10") - 10, 400 - button_height - 10, get_button_size("MP: 10"), button_height, font, 13, 4, debugger)
+    buttons.playing["HP"] = button("HP: " .. opponent_health_points, nil, nil, 425 - 50 - get_button_size("HP: 100") - get_button_size("MP: 10") - 10, 400 - button_height - 10, get_button_size("HP: 100") + 5, button_height, font, 13, 4, debugger)
 
     buttons.playing["Your MP"] = button("MP: " .. magic_points, nil, nil, 425 - 10 - get_button_size("MP: 10") - 10, 415, get_button_size("MP: 10"), button_height, font, 13, 4, debugger)
     buttons.playing["Your HP"] = button("HP: " .. health_points, nil, nil, 425 - 50 - get_button_size("HP: 100") - get_button_size("MP: 10") - 10, 415, get_button_size("HP: 100") + 5, button_height, font, 13, 4, debugger)
+
+    buttons.playing["Floop L1"] = button("Floop" .. health_points, nil, nil, 425 - 50 - get_button_size("HP: 100") - get_button_size("MP: 10") - 10, 415, get_button_size("HP: 100") + 5, button_height, font, 13, 4, debugger)
 
     --buttons.playing["Ice King"] = avatar("Ice King", "Ice King", nil, nil, 60, 11, font, opponent_button_width, opponent_button_height, avatars.ice_king, opponent_scale, debugger)
     --buttons.playing["Princess Bubblegum"] = avatar("  Princess\nBubblegum", "Princess Bubblegum", nil, nil, 43, 0, font, opponent_button_width, opponent_button_height, avatars.princess_bubblegum, opponent_scale, debugger)
@@ -321,7 +328,7 @@ function debugger(debug_text)
     debug = debug_text
 end
 
-function print_kvarray(arr)
+function print_kvarray(arr) -- can only be used in the love.draw function
     x_pos = 10
     y_pos = 200
     lg.setColor(0, 0, 0)
@@ -331,12 +338,12 @@ function print_kvarray(arr)
     end
 end
 
-function print_array(arr)
+function print_array(arr, y_offset) -- can only be used in the love.draw function
     x_pos = 10
     y_pos = 200
     lg.setColor(1, 0, 0)
     for i, v in ipairs(arr) do
-        lg.print(tostring(v), x_pos, y_pos)
+        lg.print(tostring(v), x_pos, y_pos + y_offset)
         x_pos = x_pos + 100
         if x_pos > 1000 then
             x_pos = 20
@@ -345,12 +352,17 @@ function print_array(arr)
     end
 end
 
+function update_animation_screen(screen)
+    animation_next_screen = screen
+end
+
 
 function update_game_state(state)
     for state_name, state_value in pairs(game.state) do
         game.state[state_name] = false
     end
     game.state[state] = true
+    animation = false
 end
 
 local function renderBackground()
@@ -443,9 +455,8 @@ local function player_turn()
     inc(magic_points)
     local chosen_indices = {}
 
-
     -- Choose initially/Add cards to hand when low
-    while #player_hand < 8 and count < 50 do
+    while #player_hand < 8 do
         local index = math.random(1, #card_files)
         if not contains(chosen_indices, index) then
             table.insert(player_hand, card(card_files[index], img_widths, img_heights))
@@ -480,7 +491,7 @@ local function render_biomes(x_offset, y_offset)
     end
 
     for i, biome_num in ipairs(player_biome_counts) do
-        biome(biomes[biome_num], lane_to_x["L" .. i], L_y, biome_width, biome_height):draw(x_offset, y_offset)
+        biome(biomes[biome_num], lane_to_x["L" .. i], L_y, biome_width, biome_height, i):draw(x_offset, y_offset)
     end
 end
 
@@ -502,9 +513,7 @@ end
 local function render_playing_state()
     renderBackground()
 
-    render_biomes(210, 0)
-
-    count = count + 1
+    render_biomes(212, 0)
 
     -- Draw Opponent
     buttons.playing[chosen_opponent]:draw()
@@ -549,16 +558,19 @@ local function render_playing_state()
         if i ~= #player_hand then
             card_hitboxes[card] = {(vertical_x_pos - vertical_x_offset * (#player_hand - 1)/2) * 7/10 + translation_x, (vertical_y_pos) * 7/10 + translation_y, vertical_x_offset * 7/10, (img_heights/2) * 7/10}
         else
-            card_hitboxes[card] = {(vertical_x_pos - vertical_x_offset * (#player_hand - 1)/2) * 7/10 + translation_x, (vertical_y_pos) * 7/10 + translation_y, (img_widths/2) * 7/10, (img_heights/2) * 7/10}
+            card_hitboxes[card] = {(vertical_x_pos - vertical_x_offset * (#player_hand - 1)/2) * 7/10 + translation_x, (vertical_y_pos) * 7/10 + translation_y, 110, (img_heights/2) * 7/10}
         end
         vertical_x_pos = vertical_x_pos + vertical_x_offset
     end
     love.graphics.pop()
 
+    for lane, card in pairs(played_cards) do -- lane is L1, L2, L3, or L4
+        card:draw(10/7 * (player_biome_hitboxes[lane][1] + 45), 10/7 * 445, 0)
+    end
+
     if held_card then
         held_card:draw((mouse.x - img_widths/4) * 10/7, (mouse.y - img_heights/4) * 10/7, 0)
     end
-
 end
 
 function love.update(dt)
@@ -567,6 +579,16 @@ function love.update(dt)
     end
 
     mouse.x, mouse.y = love.mouse.getPosition()
+
+    if animation then
+        animation_time = animation_time + dt
+        if animation_time > animation_length * 3 and animation_next_screen then
+            update_game_state(animation_next_screen)
+            update_animation_screen(nil)
+        end
+    else
+        animation_time = 0
+    end
 
     if buttons.playing["Card Background"]:hover() then
         mouse_over_hand = true
@@ -590,20 +612,32 @@ function love.mousepressed(x, y, button, istouch, presses)
             button:checkPressed(x, y)
         end
 
-        -- Check if card is clicked
+
         if game.state["playing"] then
             local card_number = 0
-            for card, hitbox in pairs(card_hitboxes) do
-                card_number = card_number + 1
-                if x > hitbox[1] and x < hitbox[1] + hitbox[3] and y > hitbox[2] and y < hitbox[2] + hitbox[4] then
-                    --Find index of card
-                    for i, c in pairs(player_hand) do
-                        if c == card then
-                            table.remove(player_hand, i)
-                        end
+            if held_card then
+                -- Check if biome is clicked with card in hand
+                for lane, hitbox in pairs(player_biome_hitboxes) do
+                    if x > hitbox[1] and x < hitbox[1] + hitbox[3] and y > hitbox[2] and y < hitbox[2] + hitbox[4] then
+                        played_cards[lane] = held_card
+                        held_card = nil
+                        break
                     end
-                    card_hitboxes[card] = nil
-                    held_card = card
+                end
+            else
+                -- Check if card is clicked with no card in hand
+                for card, hitbox in pairs(card_hitboxes) do
+                    card_number = card_number + 1
+                    if x > hitbox[1] and x < hitbox[1] + hitbox[3] and y > hitbox[2] and y < hitbox[2] + hitbox[4] then
+                        -- Find index of clicked card
+                        for i, c in pairs(player_hand) do
+                            if c == card then
+                                table.remove(player_hand, i)
+                            end
+                        end
+                        card_hitboxes[card] = nil
+                        held_card = card
+                    end
                 end
             end
         end
@@ -640,7 +674,7 @@ function love.draw()
         lg.printf(debug, debug_font, 10, 70, window_width)
         lg.print(debug2, 20, 260)
         --lg.print(debug3, 20, 140)
-        print_array(player_hand)
+
         lg.setColor(1, 1, 1)
     end
 end

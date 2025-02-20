@@ -1,12 +1,3 @@
-local t = {
-    name = "Alice",
-    age = 30,
-    job = "Engineer"
-}
+a = "L1"
 
--- Remove the 'age' key-value pair
-t["age"] = nil
-
-for k, v in pairs(t) do
-    print(k, v)
-end
+print(tonumber(a:sub(2, 2)))
