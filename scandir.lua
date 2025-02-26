@@ -9,12 +9,12 @@ function scandir(directory)
     return t
 end
 
-files = scandir("assets/opponents")
+--files = scandir("assets/opponents")
 --print(table.concat(files, " "))
-
-for i = 4, #files do
-    print(files[i])
-end
+--
+--for i = 4, #files do
+--    print(files[i])
+--end
 
 return scandir
 

@@ -1,7 +1,16 @@
 local love = require "love"
 local la = love.audio
+local lg = love.graphics
 
-function Button(text, func, func_params, x, y, width, height, font, text_offset_x, text_offset_y, debugger, icon, icon_scale, icon_offset_x, icon_offset_y)
+local blue = {15/255, 140/255, 220/255}
+local green = {116/255, 182/255, 82/255}
+local purple = {101/255, 52/255, 150/255}
+
+local g1, g2, g3 = green[1], green[2], green[3]
+local b1, b2, b3 = blue[1], blue[2], blue[3]
+local p1, p2, p3 = purple[1], purple[2], purple[3]
+
+function Button(text, func, func_params, x, y, width, height, font, text_offset_x, text_offset_y, debugger, icon, icon_scale, icon_offset_x, icon_offset_y, switch_background_colour)
     return {
         edge_buttons = {"Play", "Back", "Switch Background", "Hand"},
         icon = icon,
@@ -26,7 +35,7 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
         end,
 
         hover = function(self)
-            if mouse.x > self.x and mouse.x < self.x + self.width and mouse.y > self.y and mouse.y < self.y + self.height and self.func then
+            if mouse.x * (reference_window_width / lg.getWidth()) > self.x and mouse.x * (reference_window_width / lg.getWidth()) < self.x + self.width and mouse.y * (reference_window_height / lg.getHeight()) > self.y and mouse.y * (reference_window_height / lg.getHeight()) < self.y + self.height and self.func then
                     play_sound(hover_sound)
                     return true
             end
@@ -35,10 +44,14 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
 
         draw = function(self)
             -- Outer rectangle
+            love.graphics.setColor(b1, b2, b3)
             if self:hover() then
-                love.graphics.setColor(231/255, 111/255, 81/255)
                 if contains(self.edge_buttons, self.text) then
-                    love.graphics.rectangle("fill", self.x - 5, self.y - 5, self.width + 10, self.height + 10, self.border_radius, self.border_radius)
+                    if animation_length < animation_time * 1 and animation_time < animation_length * 2 then
+                        love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, self.border_radius, self.border_radius)
+                    else
+                        love.graphics.rectangle("fill", self.x - 5, self.y - 5, self.width + 10, self.height + 10, self.border_radius, self.border_radius)
+                    end
                 else
                     if animation_length < animation_time * 1 and animation_time < animation_length * 2 then
                         love.graphics.rectangle("fill", self.x - 5, self.y - 5, self.width + 10, self.height + 10, self.border_radius, self.border_radius)
@@ -47,15 +60,20 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
                     end
                 end
             else
-                love.graphics.setColor(163/255, 15/255, 32/255)
                 love.graphics.rectangle("fill", self.x - 5, self.y - 5, self.width + 10, self.height + 10, self.border_radius, self.border_radius)
             end
 
             -- Inner rectangle
+
             if self:hover() then
-                love.graphics.setColor(248/255, 252/255, 3/255)
+                love.graphics.setColor(g1, g2, g3)
                 if contains(self.edge_buttons, self.text) then
-                    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, self.border_radius, self.border_radius)
+                    if animation_length < animation_time * 1 and animation_time < animation_length * 2 then
+                        love.graphics.rectangle("fill", self.x + 5, self.y + 5, self.width - 10, self.height - 10, self.border_radius, self.border_radius)
+
+                    else
+                        love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, self.border_radius, self.border_radius)
+                    end
                 else
                     if animation_length < animation_time * 1 and animation_time < animation_length * 2 then
                         love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, self.border_radius, self.border_radius)
@@ -64,7 +82,7 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
                     end
                 end
             else
-                love.graphics.setColor(244/255, 162/255, 97/255)
+                love.graphics.setColor(p1, p2, p3)
                 love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, self.border_radius, self.border_radius)
             end
             if self.icon then
@@ -74,16 +92,16 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
             end
             if self.text then
                 if self:hover() then
-                    love.graphics.setColor(225/255, 44/255, 44/255)
+                    love.graphics.setColor(p1, p2, p3)
                 else
-                    love.graphics.setColor(248/255, 252/255, 3/255)
+                    love.graphics.setColor(g1, g2, g3)
                 end
                 love.graphics.print(self.text, self.font, self.x + self.text_offset_x, self.y + self.text_offset_y)
             end
         end,
 
         checkPressed = function(self, mouse_x, mouse_y)
-            if mouse_x > self.x and mouse_x < self.x + self.width and mouse_y > self.y and mouse_y < self.y + self.height and self.func then
+            if mouse_x * (reference_window_width / lg.getWidth()) > self.x and mouse_x * (reference_window_width / lg.getWidth()) < self.x + self.width and mouse_y * (reference_window_height / lg.getHeight()) > self.y and mouse_y * (reference_window_height / lg.getHeight()) < self.y + self.height and self.func then
                 if self.func_params then
                     self.func(self.func_params)
                 else
