@@ -186,24 +186,19 @@ local card_stats = {
     Zombie_Snake = stats(3, 5, 5, "N/A", "Basic", 2, nil, "N/A"),
     Cannibal_Snake = stats(3, 12, 3, "N/A", "Basic", 2, nil, "N/A"),
     Cobra = stats(4, 8, 15, "N/A", "Basic", 3, nil, "N/A"),
-    Python = stats(5, 9, 13, "N/A", "Basic", 3, nil, "N/A"),
+    Extra_Long_Python = stats(5, 9, 13, "N/A", "Basic", 3, nil, "N/A"),
 }
 
 local function get_stats(card)
     return card_stats[string.sub(card.card_path, 1, -5)]
 end
 
-local deck1 = {
-    "Snake",
-    "Big_Snake",
-    "Baby_Snake",
-    "Well_Fed_Snake",
-    "Anaconda",
-    "Copperhead",
-    "Zombie_Snake",
-    "Cannibal_Snake",
-    "Cobra"
-}
+local deck1 = {}
+
+for k, v in pairs(card_stats) do
+    table.insert(deck1, tostring(k))
+end
+
 
 local function get_button_size(text)
     local button_size = default_button_size
@@ -508,12 +503,12 @@ local function render_playing_state()
         end
     end
 
-    if held_card then
-        held_card:draw((mouse.x) * reference_window_width / lg.getWidth()  - img_widths/2, (mouse.y)  * reference_window_height / lg.getHeight()  - img_heights/2, 0)
+    for k, card in pairs(played_cards) do
+        card:draw(playing_field_hitboxes[k][1] + 54, playing_field_hitboxes[k][2] + 34, 0, 0.8)
     end
 
-    for k, card in pairs(played_cards) do
-        card:draw(playing_field_hitboxes[k][1] + 54, playing_field_hitboxes[k][2] + 33, 0, 0.8)
+    if held_card then
+        held_card:draw((mouse.x) * reference_window_width / lg.getWidth()  - img_widths/2, (mouse.y)  * reference_window_height / lg.getHeight()  - img_heights/2, 0)
     end
 end
 
@@ -719,8 +714,6 @@ function love.draw()
     --lg.setShader(shader)
     render_game_state()()
     --lg.setShader()
-
-    print(print_kvarray(played_cards))
 
     if debugger_enabled then
         lg.setColor(1, 0, 0)
