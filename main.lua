@@ -134,6 +134,8 @@ mouse_over_playing_field = nil
 characters = {"Alem", "Gabe", "Jamie", "Darcy", "Josh", "Michael"}
 played_cards = {}
 
+venom = 100
+
 animation_time = 0 -- how long it has been playing
 animation_length = 0.1 -- how long it lasts
 animation = false
@@ -187,6 +189,10 @@ local card_stats = {
     Python = stats(5, 9, 13, "N/A", "Basic", 3, nil, "N/A"),
 }
 
+local function get_stats(card)
+    return card_stats[string.sub(card.card_path, 1, -5)]
+end
+
 local deck1 = {
     "Snake",
     "Big_Snake",
@@ -213,15 +219,15 @@ function love.load()
     math.randomseed(os.time())
 
     playing_field = lg.newImage("assets/Sprites/Playing_field.png")
-    local playing_field_sector_width, playing_field_sector_height = 240, 425
-    playing_field_hitboxes = {{245, 15, playing_field_sector_width, playing_field_sector_height},
-                              {245 + playing_field_sector_width, 15, playing_field_sector_width, playing_field_sector_height},
-                              {245 + playing_field_sector_width * 2, 15, playing_field_sector_width, playing_field_sector_height},
-                              {245 + playing_field_sector_width * 3, 15, playing_field_sector_width, playing_field_sector_height},
-                              {245, 285, playing_field_sector_width, playing_field_sector_height},
-                              {245 + playing_field_sector_width, 285, playing_field_sector_width, playing_field_sector_height},
-                              {245 + playing_field_sector_width * 2, 285, playing_field_sector_width, playing_field_sector_height},
-                              {245 + playing_field_sector_width * 3, 285, playing_field_sector_width, playing_field_sector_height}}
+    local playing_field_sector_width, playing_field_sector_height = 240, 270
+    playing_field_hitboxes = {{245, 15, playing_field_sector_width, playing_field_sector_height, 1},
+                              {245 + playing_field_sector_width - 10, 15, playing_field_sector_width + 5, playing_field_sector_height, 2},
+                              {245 + playing_field_sector_width * 2 - 5, 15, playing_field_sector_width - 5, playing_field_sector_height, 3},
+                              {245 + playing_field_sector_width * 3 - 10, 15, playing_field_sector_width, playing_field_sector_height, 4},
+                              {245, 285, playing_field_sector_width, playing_field_sector_height, 5},
+                              {245 + playing_field_sector_width - 10, 285, playing_field_sector_width + 5, playing_field_sector_height, 6},
+                              {245 + playing_field_sector_width * 2 - 5, 285, playing_field_sector_width - 5, playing_field_sector_height, 7},
+                              {245 + playing_field_sector_width * 3 - 10, 285, playing_field_sector_width, playing_field_sector_height, 8}}
 
     --love.window.setFullscreen(true)
     love.window.setMode(reference_window_width, reference_window_height, {resizable=true, vsync=0})
@@ -505,6 +511,10 @@ local function render_playing_state()
     if held_card then
         held_card:draw((mouse.x) * reference_window_width / lg.getWidth()  - img_widths/2, (mouse.y)  * reference_window_height / lg.getHeight()  - img_heights/2, 0)
     end
+
+    for k, card in pairs(played_cards) do
+        card:draw(playing_field_hitboxes[k][1] + 54, playing_field_hitboxes[k][2] + 33, 0, 0.8)
+    end
 end
 
 local function render_info()
@@ -520,7 +530,7 @@ local function render_info()
     else
         lg.setColor(g1, g2, g3)
     end
-    local info_card_stats = card_stats[string.sub(info_card.card_path, 1, -5)]
+    local info_card_stats = get_stats(info_card)
     if info_card then
         lg.print("Cost: " .. tostring(info_card_stats.cost), font, reference_window_width / 2, info_background_y + reference_window_height * 0.7/10)
         lg.print("Defense: " .. tostring(info_card_stats.defense), font, reference_window_width / 2, info_background_y + reference_window_height * 1.7/10)
@@ -541,7 +551,20 @@ local function abs(x)
 end
 
 local function is_hitbox(x, y, hitbox)
-    return x * reference_window_width / lg.getWidth() > hitbox[1] and x * reference_window_width / lg.getWidth() < hitbox[1] + hitbox[3] and y * reference_window_height / lg.getHeight() > hitbox[2] and y * reference_window_height / lg.getHeight() < hitbox[2] + hitbox[4]
+    return x * reference_window_width / lg.getWidth() > hitbox[1] and x * reference_window_width / lg.getWidth() <= hitbox[1] + hitbox[3] and y * reference_window_height / lg.getHeight() > hitbox[2] and y * reference_window_height / lg.getHeight() <= hitbox[2] + hitbox[4]
+end
+
+local function can_play(card, sector)
+    return get_stats(card).cost <= venom and sector > 4
+end
+
+local function get_playing_field_hitbox()
+    for i, hitbox in ipairs(playing_field_hitboxes) do
+        if is_hitbox(mouse.x, mouse.y, hitbox) then
+            return hitbox[5]
+        end
+    end
+    return false
 end
 
 function love.update(dt)
@@ -578,7 +601,7 @@ function love.update(dt)
     else
         animation_time = 0
     end
-    if game.state["Info"] then
+    if game.state["info"] then
         if buttons.info["Info Background"]:hover() then
             mouse_over_info_background = true
         else
@@ -597,32 +620,22 @@ function love.update(dt)
         else
             mouse_over_hand = false
         end
-
-        for i, hitbox in ipairs(playing_field_hitboxes) do
-            if is_hitbox(mouse.x, mouse.y, hitbox) then
-                mouse_over_playing_field = hitbox[5]
-            else
-                mouse_over_playing_field = nil
-            end
-        end
     end
-end
 
-    local cards_hovered = ""
+
     -- If mouse is let go when a card is in hand put it back in the hand
     if not love.mouse.isDown(1) and held_card then
         -- If card is dropped onto info button
+        playing_field_sector = get_playing_field_hitbox()
         if mouse_over_info then
             update_game_state('info')
             info_card = held_card
-        elseif mouse_over_playing_field then
+        elseif playing_field_sector and can_play(held_card, playing_field_sector) then
             -- If card is dropped onto playing field
-            for i, hitbox in ipairs(playing_field_hitboxes) do
-                if is_hitbox(mouse.x, mouse.y, hitbox) then
-                    table.insert(played_cards, held_card)
-                    held_card = nil
-                    play_sound(hover_sound)
-                end
+            played_cards[playing_field_sector] = held_card
+            venom = venom - get_stats(held_card).cost
+            held_card = nil
+            play_sound(hover_sound)
         end
 
         -- If card is dropped but not played
@@ -707,9 +720,11 @@ function love.draw()
     render_game_state()()
     --lg.setShader()
 
+    print(print_kvarray(played_cards))
+
     if debugger_enabled then
         lg.setColor(1, 0, 0)
-        lg.printf(debug or "NIL", debug_font, 10, 70, reference_window_width)
+        lg.printf(tostring(debug), debug_font, 10, 70, reference_window_width)
         lg.print(debug2, 20, 260)
         --lg.print(debug3, 20, 140)
 
