@@ -1,3 +1,7 @@
-a = "L1"
+if 5 > 4 then
+    local x = 1
+else
+    local x = 2
+end
 
-print(tonumber(a:sub(2, 2)))
+print(x)

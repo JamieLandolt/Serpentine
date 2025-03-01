@@ -2,15 +2,15 @@ local love = require "love"
 local la = love.audio
 local lg = love.graphics
 
-local blue = {15/255, 140/255, 220/255}
-local green = {116/255, 182/255, 82/255}
-local purple = {101/255, 52/255, 150/255}
+function Button(text, func, func_params, x, y, width, height, font, text_offset_x, text_offset_y, debugger, colour_variation, icon, icon_scale, icon_offset_x, icon_offset_y)
+    local function colour_scaling(val)
+        if colour_variation then
+            return val + (25 * (math.sin(3*time) + 1)/255)
+        else
+            return val
+        end
+    end
 
-local g1, g2, g3 = green[1], green[2], green[3]
-local b1, b2, b3 = blue[1], blue[2], blue[3]
-local p1, p2, p3 = purple[1], purple[2], purple[3]
-
-function Button(text, func, func_params, x, y, width, height, font, text_offset_x, text_offset_y, debugger, icon, icon_scale, icon_offset_x, icon_offset_y, switch_background_colour)
     return {
         edge_buttons = {"Play", "Back", "Switch Background", "Hand"},
         icon = icon,
@@ -36,13 +36,19 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
 
         hover = function(self)
             if mouse.x * (reference_window_width / lg.getWidth()) > self.x and mouse.x * (reference_window_width / lg.getWidth()) < self.x + self.width and mouse.y * (reference_window_height / lg.getHeight()) > self.y and mouse.y * (reference_window_height / lg.getHeight()) < self.y + self.height and self.func then
-                    play_sound(hover_sound)
                     return true
             end
             return false
         end,
 
-        draw = function(self)
+        draw = function(self, scale)
+            local blue = {15/255, 140/255, 220/255}
+            local green = {colour_scaling(116/255), colour_scaling(182/255), colour_scaling(82/255)}
+            local purple = {colour_scaling(101/255), colour_scaling(52/255), colour_scaling(150/255)}
+
+            local g1, g2, g3 = green[1], green[2], green[3]
+            local b1, b2, b3 = blue[1], blue[2], blue[3]
+            local p1, p2, p3 = purple[1], purple[2], purple[3]
             -- Outer rectangle
             love.graphics.setColor(b1, b2, b3)
             if self:hover() then
@@ -102,14 +108,19 @@ function Button(text, func, func_params, x, y, width, height, font, text_offset_
 
         checkPressed = function(self, mouse_x, mouse_y)
             if mouse_x * (reference_window_width / lg.getWidth()) > self.x and mouse_x * (reference_window_width / lg.getWidth()) < self.x + self.width and mouse_y * (reference_window_height / lg.getHeight()) > self.y and mouse_y * (reference_window_height / lg.getHeight()) < self.y + self.height and self.func then
+                play_sound(hover_sound)
+                animation = true
+                animation_time = 0
+
                 if self.func_params then
                     self.func(self.func_params)
+                    return true
                 else
                     self.func()
+                    return true
                 end
-                animation = true
-                return
             end
+            return false
         end
     }
 end

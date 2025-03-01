@@ -6,10 +6,11 @@ local avatar = require "Avatar"
 local scandir = require "scandir"
 local card = require "Card"
 local stats = require "Stats"
+local text = require "Text"
 
-reference_window_width = nil
-reference_window_height = nil
-
+reference_window_width = 1440
+reference_window_height = 872
+time = 0
 
 local debug = "Debug Text"
 local debug2 = "Debug Text"
@@ -18,28 +19,38 @@ local debugger_enabled = true
 local debug_font = love.graphics.newFont("assets/Jersey15-Regular.ttf", 20)
 local font = love.graphics.newFont("assets/Jersey15-Regular.ttf", 50)
 
-local audio = false
+local audio = true
 
 local card_files = {"Beach_Mum.png", "Big_Foot.png", "Big_Foot_Gold.png", "Blue_Slimey.png", "Blueberry_Djini.png", "Brain_Gooey.png", "Burning_Hand.png", "Cerebral_Bloodstorm.png", "Cornball.png", "Cornball_Gold.png", "Dark_Angel.png", "Dragon_claw.png", "Ghost_Djini.png", "Ghost_Ninja.png", "Ghost_Ninja_Gold.png", "Giant_Mummy_Hand.png", "Grape_Slimey.png", "Gray_Eyebat.png", "Gray_Eyebat_Gold.png", "Green_Cactaball.png", "Green_Cactaball_Gold.png", "Green_Mermaid.png", "Green_Merman.png", "Green_Merman_Gold.png", "Heavenly_Gazer_Gold.png", "Huskerbat.png", "Lime_slimey.png", "Mud_Angel_Gold.png", "Nicelands_Eye_Bat.png", "Orange_Slimey.png", "Ordinary_Ninja.png", "Peach_djini.png", "Sand_Angel.png", "Sand_Angel_Gold.png", "Sand_eyebat.png", "Sandfoot.png", "Travelin%27_Farmer.png", "Travelin%27_Skeleton.png", "Travelin_Wizard.png", "Unicycle_Knight.png", "Unicyclops.png", "Wall_Of_Sand.png", "Wall_of_Chocolate.png", "Wall_of_Ears.png"}
 local background_files = {"background10.jpg", "background2.jpg", "background3.jpg", "background6.jpg", "background7.jpg", "background8.jpg"}
 
 local chosen_background = ""
 
+local info_button_height = reference_window_height * 1/3
+local info_button_width = reference_window_width * 0.9/6 - 10
+local info_button_x = reference_window_width * 5.05/6 + 5
+local info_button_y = reference_window_height * 2/3 - 10
+
+local info_button_hitbox = {info_button_x, info_button_y, info_button_width, info_button_height}
+
 local w = 1440
 local h = 900
 
-local card_background_height = (lg.getHeight() * 3/8 + 10)
-local card_background_width = (lg.getWidth()*5/8 - 96)
+local blue = {15/255, 140/255, 220/255}
+local green = {116/255, 182/255, 82/255}
+local purple = {101/255, 52/255, 150/255}
+
+local g1, g2, g3 = green[1], green[2], green[3]
+local b1, b2, b3 = blue[1], blue[2], blue[3]
+local p1, p2, p3 = purple[1], purple[2], purple[3]
 
 local card_hitboxes = {} --x, y, width, height
 
 local button_width = 200
 local button_height = 60
+
 local opponent_button_width = 355
 local opponent_button_height = 500
-
-local opponent_pic_width = 355
-local opponent_pic_height = 400
 
 local default_button_size = 10
 local letter_sizes = {
@@ -110,26 +121,6 @@ local letter_sizes = {
     [":"] = 6
 }
 
-local L1_x = 218
-local L2_x = 423
-local L3_x = 628
-local L4_x = 833
-local opp_L_y = 100
-local L_y = 405
-
-local lane_to_x = {L1 = L1_x, L2 = L2_x, L3 = L3_x, L4 = L4_x}
-
-local fields = {
-    Player = {}
-}
-
-local magic_points = 1
-local health_points = 100
-local opponent_magic_points = 1
-local opponent_health_points = 100
-
-local resized
-
 -- NOT LOCAL
 mouse = {}
 chosen_avatar = "Jamie"
@@ -137,6 +128,9 @@ chosen_opponent = "Ice King"
 scroll_offset_y = 0
 count = 0
 mouse_over_hand = false
+mouse_over_info = false
+mouse_over_info_background = false
+mouse_over_playing_field = nil
 characters = {"Alem", "Gabe", "Jamie", "Darcy", "Josh", "Michael"}
 played_cards = {}
 
@@ -151,6 +145,7 @@ local icons = {}
 
 local player_hand = {}
 local held_card
+local info_card
 
 local buttons = {
     menu = {},
@@ -160,7 +155,9 @@ local buttons = {
     collection = {},
     playing = {},
     paused = {},
-    ended = {}
+    ended = {},
+    info = {},
+    universal = {}
 }
 
 local game = {
@@ -172,20 +169,22 @@ local game = {
         collection = false,
         playing = false,
         paused = false,
-        ended = false
+        ended = false,
+        info = false
     }
 }
 
 local card_stats = {
-    Snake = stats(2, 3, 2, "N/A", 1),
-    Big_Snake = stats(3, 3, 10, "N/A", 2),
-    Baby_Snake = stats(1, 6, 1, "N/A", 2),
-    Well_Fed_Snake = stats(2, 4, 2, "N/A", 1),
-    Anaconda = stats(6, 8, 8, "N/A", 3),
-    Copperhead = stats(5, 10, 5, "N/A", 3),
-    Zombie_Snake = stats(3, 5, 5, "N/A", 2),
-    Cannibal_Snake = stats(3, 12, 3, "N/A", 2),
-    Cobra = stats(4, 8, 15, "N/A", 3)
+    Snake = stats(2, 3, 2, "N/A", "Basic", 1, nil, "N/A"),
+    Big_Snake = stats(3, 3, 10, "N/A", "Basic", 2, nil, "N/A"),
+    Baby_Snake = stats(1, 6, 1, "N/A", "Basic", 2, nil, "N/A"),
+    Well_Fed_Snake = stats(2, 4, 2, "N/A", "Basic", 1, nil, "N/A"),
+    Anaconda = stats(6, 8, 8, "N/A", "Basic", 3, nil, "N/A"),
+    Copperhead = stats(5, 10, 5, "N/A", "Basic", 3, nil, "N/A"),
+    Zombie_Snake = stats(3, 5, 5, "N/A", "Basic", 2, nil, "N/A"),
+    Cannibal_Snake = stats(3, 12, 3, "N/A", "Basic", 2, nil, "N/A"),
+    Cobra = stats(4, 8, 15, "N/A", "Basic", 3, nil, "N/A"),
+    Python = stats(5, 9, 13, "N/A", "Basic", 3, nil, "N/A"),
 }
 
 local deck1 = {
@@ -213,12 +212,29 @@ local function placeholder() end
 function love.load()
     math.randomseed(os.time())
 
-
-    reference_window_width = 1440
-    reference_window_height = 872
+    playing_field = lg.newImage("assets/Sprites/Playing_field.png")
+    local playing_field_sector_width, playing_field_sector_height = 240, 425
+    playing_field_hitboxes = {{245, 15, playing_field_sector_width, playing_field_sector_height},
+                              {245 + playing_field_sector_width, 15, playing_field_sector_width, playing_field_sector_height},
+                              {245 + playing_field_sector_width * 2, 15, playing_field_sector_width, playing_field_sector_height},
+                              {245 + playing_field_sector_width * 3, 15, playing_field_sector_width, playing_field_sector_height},
+                              {245, 285, playing_field_sector_width, playing_field_sector_height},
+                              {245 + playing_field_sector_width, 285, playing_field_sector_width, playing_field_sector_height},
+                              {245 + playing_field_sector_width * 2, 285, playing_field_sector_width, playing_field_sector_height},
+                              {245 + playing_field_sector_width * 3, 285, playing_field_sector_width, playing_field_sector_height}}
 
     --love.window.setFullscreen(true)
-    love.window.setMode(reference_window_width, reference_window_height, {resizable=true, vsync=0, minwidth=reference_window_width/2, minheight=reference_window_height/2})
+    love.window.setMode(reference_window_width, reference_window_height, {resizable=true, vsync=0})
+
+    local card_background_height = reference_window_height * 1/3
+    local card_background_width = reference_window_width * 2/3 - 10
+    local card_background_x = reference_window_width * 1/6 + 5
+    local card_background_y = reference_window_height - card_background_height - 10
+
+    local info_background_height = reference_window_height * 5/6
+    local info_background_width = reference_window_width * 5/6
+    local info_background_x = reference_window_width * 0.7/6 + 5
+    info_background_y = reference_window_height * 1/12
 
     local button_background_width, button_background_height = resize(240, 1), resize(425, 2)
 
@@ -259,17 +275,14 @@ function love.load()
     buttons.menu["Switch Background"] = button("Switch Background", new_background, nil, lg.getWidth() - get_button_size("Switch Background") - 5, 5, get_button_size("Switch Background"), button_height, font, 5, 4, debugger)
 
     buttons.collection["Collection Header"] = button("Collection", nil, nil, lg.getWidth() / 2 - button_width / 2, 5, button_width, button_height, font, 14, 4, debugger)
-    buttons.collection["Back"] = button("Back", update_animation_screen, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.universal["Back"] = button("Back", update_animation_screen, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
 
     buttons.settings["Toggle Audio"] = button("Toggle Audio", toggle_audio, nil, lg.getWidth() / 2 - button_width * 1/4, lg.getHeight() / 2 - 100, button_width * 1.315, button_height, font, 19, 4, debugger)
-    buttons.settings["Audio Enabled"] = button("", nil, nil, lg.getWidth() / 2 - button_width * 3/4, lg.getHeight() / 2 - 100, button_width * 0.3, button_height, font, 19, 4, debugger, icons.audio_enabled, 1/4, -6, 16)
-    buttons.settings["Audio Disabled"] = button("", nil, nil, lg.getWidth() / 2 - button_width * 3/4, lg.getHeight() / 2 - 100, button_width * 0.3, button_height, font, 19, 4, debugger, icons.audio_disabled, 1/4, -6, 16)
-    buttons.settings["Back"] = button("Back", update_animation_screen, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.settings["Audio Enabled"] = button("", nil, nil, lg.getWidth() / 2 - button_width * 3/4, lg.getHeight() / 2 - 100, button_width * 0.3, button_height, font, 19, 4, debugger, false, icons.audio_enabled, 1/4, -6, 16)
+    buttons.settings["Audio Disabled"] = button("", nil, nil, lg.getWidth() / 2 - button_width * 3/4, lg.getHeight() / 2 - 100, button_width * 0.3, button_height, font, 19, 4, debugger, false, icons.audio_disabled, 1/4, -6, 16)
 
-    buttons.level_select["Back"] = button("Back", update_animation_screen, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
     buttons.level_select["Select Opponent"] = button("Select Opponent", nil, nil, 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
 
-    buttons.character_select["Back"] = button("Back", update_animation_screen, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
     buttons.character_select["Gabe"] = avatar("Gabe", "Gabe", update_game_state, "menu", 95, 20, font, opponent_button_width, opponent_button_height, avatars.gabe, 0.7, debugger)
     buttons.character_select["Jamie"] = avatar("Jamie", "Jamie", update_game_state, "menu", 85, 20, font, opponent_button_width, opponent_button_height, avatars.jamie, 0.7, debugger)
     buttons.character_select["Michael"] = avatar("Michael", "Michael", update_game_state, "menu", 75, 20, font, opponent_button_width, opponent_button_height, avatars.michael, 0.7, debugger)
@@ -277,21 +290,11 @@ function love.load()
     buttons.character_select["Alem"] = avatar("Alem", "Alem", update_game_state, "menu", 95, 20, font, opponent_button_width, opponent_button_height, avatars.alem, 0.7, debugger)
     buttons.character_select["Darcy"] = avatar("Darcy", "Darcy", update_game_state, "menu", 85, 20, font, opponent_button_width, opponent_button_height, avatars.darcy, 0.7, debugger)
 
-    buttons.playing["Back"] = button("Back", update_animation_screen, "menu", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
-    buttons.playing["Card Background"] = button("Hand", placeholder, nil, 5, lg.getHeight() - card_background_height - 5, card_background_width, card_background_height, font, 19, 4, debugger)
+    buttons.playing["Card Background"] = button("", placeholder, nil, card_background_x, card_background_y, card_background_width, card_background_height, font, 19, 4, debugger)
+    buttons.playing["Info"] = button("Info", placeholder, nil, info_button_x, info_button_y, info_button_width, info_button_height, font, 19, 4, debugger, true)
 
-
-    buttons.playing["You"] = button("You", nil, nil, 5 + lg.getWidth() - (827 + get_button_size("You")) / 2, 715, get_button_size("You"), button_height, font, 3, 5, debugger)
-    buttons.playing["You Stats"] = button("You", nil, nil, 375 - get_button_size("Ice King"), 400 + button_height + 10, get_button_size("You"), button_height, font, 3, 5, debugger)
-
-    buttons.playing["MP"] = button("MP: " .. opponent_magic_points, nil, nil, 425 - 10 - get_button_size("MP: 10") - 10, 400 - button_height - 10, get_button_size("MP: 10"), button_height, font, 13, 4, debugger)
-    buttons.playing["HP"] = button("HP: " .. opponent_health_points, nil, nil, 425 - 50 - get_button_size("HP: 100") - get_button_size("MP: 10") - 10, 400 - button_height - 10, get_button_size("HP: 100") + 5, button_height, font, 13, 4, debugger)
-
-    buttons.playing["Your MP"] = button("MP: " .. magic_points, nil, nil, 425 - 10 - get_button_size("MP: 10") - 10, 415, get_button_size("MP: 10"), button_height, font, 13, 4, debugger)
-    buttons.playing["Your HP"] = button("HP: " .. health_points, nil, nil, 425 - 50 - get_button_size("HP: 100") - get_button_size("MP: 10") - 10, 415, get_button_size("HP: 100") + 5, button_height, font, 13, 4, debugger)
-
-    buttons.playing["Floop L1"] = button("Floop" .. health_points, nil, nil, 425 - 50 - get_button_size("HP: 100") - get_button_size("MP: 10") - 10, 415, get_button_size("HP: 100") + 5, button_height, font, 13, 4, debugger)
-
+    buttons.info["Back"] = button("Back", update_animation_screen, "playing", 5, 5, button_width * 5/8, button_height, font, 19, 4, debugger)
+    buttons.info["Info Background"] = button("Card Stats:", placeholder, nil, info_background_x, info_background_y, info_background_width, info_background_height, font, 19, 4, debugger)
 end
 
 function resize(num, type)
@@ -358,13 +361,13 @@ function update_animation_screen(screen)
     animation_next_screen = screen
 end
 
-
 function update_game_state(state)
     for state_name, state_value in pairs(game.state) do
         game.state[state_name] = false
     end
-    game.state[state] = true
     animation = false
+    game.state[state] = true
+
 end
 
 local function renderBackground()
@@ -394,9 +397,9 @@ local function render_cards()
         offset_y = 0
     end
     renderBackground()
-    print(lg.getWidth())
+
     for c, s in pairs(cards) do
-        if offset_x + resize(img_widths, 1) > love.graphics.getWidth() then
+        if offset_x + resize(img_widths, 1) > reference_window_width then
             offset_x = 69
             offset_y = offset_y + img_heights
         end
@@ -404,8 +407,9 @@ local function render_cards()
         love.graphics.draw(s, offset_x, offset_y + button_height + 10)
         offset_x = offset_x + img_widths
     end
+
     buttons.collection["Collection Header"]:draw()
-    buttons.collection["Back"]:draw()
+    buttons.universal["Back"]:draw()
 end
 
 local function render_character_select()
@@ -419,12 +423,12 @@ local function render_character_select()
     --buttons.character_select["Darcy"]:draw(550, 550 + scroll_offset_y * 5)
     --buttons.character_select["Josh"]:draw(950, 550 + scroll_offset_y * 5)
 
-    buttons.character_select["Back"]:draw()
+    buttons.universal["Back"]:draw()
 end
 
 local function render_settings()
     renderBackground()
-    buttons.settings["Back"]:draw()
+    buttons.universal["Back"]:draw()
     buttons.settings["Toggle Audio"]:draw()
     if audio then
         buttons.settings["Audio Enabled"]:draw()
@@ -436,7 +440,7 @@ end
 local function render_level_select()
     local x, y = 45, 100
     renderBackground()
-    buttons.level_select["Back"]:draw(0, 800)
+    buttons.universal["Back"]:draw(0, 800)
 end
 
 local function inc(x)
@@ -453,74 +457,78 @@ function contains(table, val)
 end
 
 local function player_turn()
-    inc(magic_points)
     local chosen_indices = {}
 
-    -- Choose initially/Add cards to hand when low
-    while #player_hand < 8 do
-        local index = math.random(1, #deck1)
-        if not contains(chosen_indices, index) then
-            table.insert(player_hand, card(deck1[index] .. ".png", img_widths, img_heights))
-            table.insert(chosen_indices, index)
+    if not love.mouse.isDown(1) then
+        -- Choose initially/Add cards to hand
+        while #player_hand < 8 and not held_card do
+            local index = math.random(1, #deck1)
+            if not contains(chosen_indices, index) then
+                table.insert(player_hand, card(deck1[index] .. ".png", img_widths, img_heights))
+                table.insert(chosen_indices, index)
+            end
         end
     end
 end
 
-
 local function render_playing_state()
     renderBackground()
 
-    -- Draw Opponent
-    --buttons.playing[chosen_opponent]:draw()
-    --buttons.playing["You"]:draw()
-
-    --buttons.playing["HP"]:draw()
-    --buttons.playing["MP"]:draw()
-    --
-    --buttons.playing["Your HP"]:draw()
-    --buttons.playing["Your MP"]:draw()
-
-    buttons.playing["Back"]:draw()
+    buttons.universal["Back"]:draw()
     buttons.playing["Card Background"]:draw()
 
-
-    local rotation = -#player_hand/2 * 0.1
-    local rotation_difference = 0.1 -- Amount to rotate next drawn card
-    local x_pos = -img_widths * 0.3 - 1
-    local x_offset = 0
-    local y_pos = - lg.getHeight() / 2 - img_heights
-
-    local vertical_rotation = 0
-    local vertical_rotation_difference = 0
-    local vertical_x_pos = -img_widths * 0.3 - 30
-    local vertical_x_offset = 45
-    local vertical_y_pos = - lg.getHeight() / 2 - img_heights + 25
-
-    local translation_x = 207
-    local translation_y = lg.getHeight() * 5/4 + lg.getHeight() * 1/16 - 10
-
-    love.graphics.push()
-    love.graphics.translate(translation_x, translation_y)
-
-    for i, card in ipairs(player_hand) do
-        if mouse_over_hand then
-            card:draw(vertical_x_pos - vertical_x_offset * (#player_hand - 1)/2, vertical_y_pos, vertical_rotation + vertical_rotation_difference * (i-1))
-        else
-            card:draw(x_pos - x_offset * (#player_hand - 1)/2, y_pos, rotation + rotation_difference * (i-1))
-        end
-
-        --Track Card Hitboxes
-        if i ~= #player_hand then
-            card_hitboxes[card] = {(vertical_x_pos - vertical_x_offset * (#player_hand - 1)/2) * 7/10 + translation_x, (vertical_y_pos) * 7/10 + translation_y, vertical_x_offset * 7/10, (img_heights/2) * 7/10}
-        else
-            card_hitboxes[card] = {(vertical_x_pos - vertical_x_offset * (#player_hand - 1)/2) * 7/10 + translation_x, (vertical_y_pos) * 7/10 + translation_y, 110, (img_heights/2) * 7/10}
-        end
-        vertical_x_pos = vertical_x_pos + vertical_x_offset
-    end
-    love.graphics.pop()
+    lg.setColor(1, 1, 1)
+    lg.draw(playing_field, 245, 15)
 
     if held_card then
-        held_card:draw((mouse.x - img_widths/4) * 10/7, (mouse.y - img_heights/4) * 10/7, 0)
+        buttons.playing["Info"]:draw()
+    end
+
+    local x_pos = reference_window_width * 1.1/6 + 5
+    local x_offset = reference_window_width * 0.44/6
+    local y_pos = reference_window_height*16.6/24 - 5
+
+    for i, card in ipairs(player_hand) do
+        card:draw(x_pos + x_offset * (i-1), y_pos, 0)
+
+        -- x and y positions need to be base on the reference w and h NOT current w and h
+        -- bc everything should be placed according to the reference size and is later scaled
+
+        --Store Card Hitboxes
+        if i ~= #player_hand then
+            card_hitboxes[card] = {x_pos + x_offset * (i-1), y_pos, x_offset, img_heights}
+        else
+            card_hitboxes[card] = {x_pos + x_offset * (i-1), y_pos, 165, img_heights}
+        end
+    end
+
+    if held_card then
+        held_card:draw((mouse.x) * reference_window_width / lg.getWidth()  - img_widths/2, (mouse.y)  * reference_window_height / lg.getHeight()  - img_heights/2, 0)
+    end
+end
+
+local function render_info()
+    renderBackground()
+    buttons.info["Back"]:draw()
+    buttons.info["Info Background"]:draw()
+    if info_card then
+        info_card:draw(reference_window_width * 0.8/6 + 5, reference_window_height * 1/6, 0, 2.65)
+    end
+
+    if mouse_over_info_background then
+        lg.setColor(p1, p2, p3)
+    else
+        lg.setColor(g1, g2, g3)
+    end
+    local info_card_stats = card_stats[string.sub(info_card.card_path, 1, -5)]
+    if info_card then
+        lg.print("Cost: " .. tostring(info_card_stats.cost), font, reference_window_width / 2, info_background_y + reference_window_height * 0.7/10)
+        lg.print("Defense: " .. tostring(info_card_stats.defense), font, reference_window_width / 2, info_background_y + reference_window_height * 1.7/10)
+        lg.print("Attack: " .. tostring(info_card_stats.attack), font, reference_window_width / 2, info_background_y + reference_window_height * 3.7/10)
+        lg.print("Rarity: " .. tostring(info_card_stats.rarity), font, reference_window_width / 2, info_background_y + reference_window_height * 4.7/10)
+        lg.print("Tier: " .. tostring(info_card_stats.border), font, reference_window_width / 2, info_background_y + reference_window_height * 2.7/10)
+        lg.print("Ability: " .. tostring(info_card_stats.ability), font, reference_window_width / 2, info_background_y + reference_window_height * 5.7/10)
+        lg.print("Lore: " .. tostring(info_card_stats.ability), font, reference_window_width / 2, info_background_y + reference_window_height * 6.7/10)
     end
 end
 
@@ -532,7 +540,13 @@ local function abs(x)
     end
 end
 
+local function is_hitbox(x, y, hitbox)
+    return x * reference_window_width / lg.getWidth() > hitbox[1] and x * reference_window_width / lg.getWidth() < hitbox[1] + hitbox[3] and y * reference_window_height / lg.getHeight() > hitbox[2] and y * reference_window_height / lg.getHeight() < hitbox[2] + hitbox[4]
+end
+
 function love.update(dt)
+    time = time + dt
+
     local aspect_ratio = 1440 / 872
     if abs(w / h - aspect_ratio) > 0.008 then
         -- Width is too wide, so adjust height
@@ -554,18 +568,67 @@ function love.update(dt)
 
     if animation then
         animation_time = animation_time + dt
-        if animation_time > animation_length * 3 and animation_next_screen then
-            update_game_state(animation_next_screen)
-            update_animation_screen(nil)
+        if animation_time > animation_length * 3 then
+            if animation_next_screen then
+                update_game_state(animation_next_screen)
+                update_animation_screen(nil)
+            end
+            animation = false
         end
     else
         animation_time = 0
     end
+    if game.state["Info"] then
+        if buttons.info["Info Background"]:hover() then
+            mouse_over_info_background = true
+        else
+            mouse_over_info_background = false
+        end
+    end
+    if game.state["playing"] then
+        if buttons.playing["Info"]:hover() then
+            mouse_over_info = true
+        else
+            mouse_over_info = false
+        end
 
-    if buttons.playing["Card Background"]:hover() then
-        mouse_over_hand = true
-    else
-        mouse_over_hand = false
+        if buttons.playing["Card Background"]:hover() then
+            mouse_over_hand = true
+        else
+            mouse_over_hand = false
+        end
+
+        for i, hitbox in ipairs(playing_field_hitboxes) do
+            if is_hitbox(mouse.x, mouse.y, hitbox) then
+                mouse_over_playing_field = hitbox[5]
+            else
+                mouse_over_playing_field = nil
+            end
+        end
+    end
+end
+
+    local cards_hovered = ""
+    -- If mouse is let go when a card is in hand put it back in the hand
+    if not love.mouse.isDown(1) and held_card then
+        -- If card is dropped onto info button
+        if mouse_over_info then
+            update_game_state('info')
+            info_card = held_card
+        elseif mouse_over_playing_field then
+            -- If card is dropped onto playing field
+            for i, hitbox in ipairs(playing_field_hitboxes) do
+                if is_hitbox(mouse.x, mouse.y, hitbox) then
+                    table.insert(played_cards, held_card)
+                    held_card = nil
+                    play_sound(hover_sound)
+                end
+        end
+
+        -- If card is dropped but not played
+        table.insert(player_hand, held_card)
+        held_card = nil
+        play_sound(hover_sound)
     end
 end
 
@@ -578,40 +641,38 @@ local function get_game_state()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
+    local pressed = false
     if button == 1 then
-        -- Check if button is clicked
+        -- Check if button on screen is clicked
         for button_name, button in pairs(buttons[get_game_state()]) do
-            button:checkPressed(x, y)
+            if button:checkPressed(x, y) then
+                pressed = true
+            end
         end
 
+        -- Check universal buttons only if a screen button wasn't pressed
+        if not pressed then
+            for button_name, button in pairs(buttons["universal"]) do
+                button:checkPressed(x, y)
+            end
+        end
 
         if game.state["playing"] then
             local card_number = 0
-            --if held_card then
-            --    -- Check if biome is clicked with card in hand
-            --    for lane, hitbox in pairs(player_biome_hitboxes) do
-            --        if x > hitbox[1] and x < hitbox[1] + hitbox[3] and y > hitbox[2] and y < hitbox[2] + hitbox[4] then
-            --            played_cards[lane] = held_card
-            --            held_card = nil
-            --            break
-            --        end
-            --    end
-            --else
-            --    -- Check if card is clicked with no card in hand
-            --    for card, hitbox in pairs(card_hitboxes) do
-            --        card_number = card_number + 1
-            --        if x > hitbox[1] and x < hitbox[1] + hitbox[3] and y > hitbox[2] and y < hitbox[2] + hitbox[4] then
-            --            -- Find index of clicked card
-            --            for i, c in pairs(player_hand) do
-            --                if c == card then
-            --                    table.remove(player_hand, i)
-            --                end
-            --            end
-            --            card_hitboxes[card] = nil
-            --            held_card = card
-            --        end
-            --    end
-            --end
+            -- Check if card is clicked with no card in hand
+            for card, hitbox in pairs(card_hitboxes) do
+                card_number = card_number + 1
+                if is_hitbox(x, y, hitbox) then
+                    -- Find index of clicked card
+                    for i, c in pairs(player_hand) do
+                        if c == card then
+                            table.remove(player_hand, i)
+                        end
+                    end
+                    card_hitboxes[card] = nil
+                    held_card = card
+                end
+            end
         end
     end
 end
@@ -624,28 +685,31 @@ function love.wheelmoved(x, y)
     end
 end
 
+local function render_game_state()
+    local funcs = {
+        menu = render_main_menu,
+        settings = render_settings,
+        level_select = render_level_select,
+        character_select = render_character_select,
+        collection = render_cards,
+        playing = render_playing_state,
+        --paused = render_paused_state,
+        --ended = render_ended_state,
+        info = render_info
+    }
+    return funcs[get_game_state()]
+end
+
 function love.draw()
     lg.scale(lg.getWidth()/reference_window_width)
-    --lg.setShader(shader)
-    if game.state["menu"] then
-        render_main_menu()
-    elseif game.state["level_select"] then
-        render_level_select()
-    elseif game.state["character_select"] then
-        render_character_select()
-    elseif game.state["collection"] then
-        render_cards()
-    elseif game.state["settings"] then
-        render_settings()
-    elseif game.state["playing"] then
-        render_playing_state()
-    end
---    lg.setShader()
 
-    debugger(tostring(lg.getWidth()) .. tostring(reference_window_width))
+    --lg.setShader(shader)
+    render_game_state()()
+    --lg.setShader()
+
     if debugger_enabled then
         lg.setColor(1, 0, 0)
-        lg.printf(debug, debug_font, 10, 70, reference_window_width)
+        lg.printf(debug or "NIL", debug_font, 10, 70, reference_window_width)
         lg.print(debug2, 20, 260)
         --lg.print(debug3, 20, 140)
 

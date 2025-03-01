@@ -1,10 +1,13 @@
-function Stats(cost, attack, defense, ability, rarity)
+function Stats(cost, attack, defense, ability, border, rarity, ability_code, lore)
     return {
         cost = cost,
         attack = attack,
         defense = defense,
         ability = ability,
-        rarity = rarity
+        border = border,
+        rarity = rarity,
+        ability_code = ability_code,
+        lore = lore
     }
 end
 
